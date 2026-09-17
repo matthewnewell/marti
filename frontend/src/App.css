@@ -1,0 +1,2 @@
+/* Page-level layout is per-page (ProjectsPage, SplashPage each manage their own scroll);
+   AppLayout (the project-detail shell) has its own CSS. Nothing global needed here yet. */

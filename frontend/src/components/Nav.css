@@ -1,0 +1,31 @@
+.mt-nav {
+  display: flex;
+  align-items: center;
+  gap: 24px;
+  padding: 10px 20px;
+  background: var(--color-surface);
+  border-bottom: 1px solid var(--color-border);
+  flex-shrink: 0;
+}
+
+.mt-nav__brand {
+  font-weight: 700;
+  font-size: 14px;
+  color: var(--color-text);
+  text-decoration: none;
+  flex-shrink: 0;
+}
+
+.mt-nav__right {
+  margin-left: auto;
+}
+
+.mt-nav__link {
+  font-size: 13px;
+  color: var(--color-text-secondary);
+  text-decoration: none;
+}
+
+.mt-nav__link:hover {
+  color: var(--color-accent);
+}
