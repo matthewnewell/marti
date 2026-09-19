@@ -77,28 +77,3 @@ export interface ProjectDetail {
   materials: Material[]
   tension: Tension | null
 }
-
-/** One entry from Conway's Depot's merged project journal — GET /api/projects/<id>/journal
- * there. `source_type` "note" = a manual Depot note, "app" = federated from a connected
- * sibling app (MARTI doesn't publish its own /api/journal yet, so these are always some other
- * app's entries when they show up). */
-export interface DepotJournalEntry {
-  id: string
-  timestamp: string
-  author: string | null
-  summary: string
-  href: string | null
-  source_type: 'note' | 'app'
-  application_id: string | null
-  application_name: string | null
-}
-
-export interface ChatMessage {
-  role: 'user' | 'assistant'
-  content: string
-}
-
-export interface ChatResult {
-  reply?: string
-  error?: string
-}
