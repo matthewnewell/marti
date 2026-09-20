@@ -1,3 +1,4 @@
+import { DepotBackBar } from '@conways/drawer'
 import { Route, Routes } from 'react-router-dom'
 import AppLayout from './components/AppLayout'
 import ProjectDetailPage from './pages/ProjectDetailPage'
@@ -7,12 +8,15 @@ import './App.css'
 
 export default function App() {
   return (
-    <Routes>
+    <>
+      <DepotBackBar />
+      <Routes>
       <Route path="/" element={<ProjectsPage />} />
       <Route path="/about" element={<SplashPage />} />
       <Route path="/projects/:projectId" element={<AppLayout />}>
         <Route index element={<ProjectDetailPage />} />
       </Route>
-    </Routes>
+      </Routes>
+    </>
   )
 }
