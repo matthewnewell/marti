@@ -8,7 +8,7 @@ from datetime import date, timedelta
 from db import db
 from models import AcquisitionOrder, Material, Routing, Tradeoff
 
-# Demo: Bracket Assembly Program — the same project Value Stream's own demo map and WinMax's
+# Bracket Assembly Program — the same project Value Stream's own demo map and WinMax's
 # demo pursuit are already crosswalked to (see conways-depot's seed.py).
 BRACKET_ASSEMBLY_PROJECT_ID = "ff5bfe0b-7b18-4337-a464-6517c6f6c13b"
 
@@ -57,3 +57,7 @@ def seed_if_empty():
         )
     )
     db.session.commit()
+
+    from demo_data import apply_demo_materials
+
+    apply_demo_materials()
