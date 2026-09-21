@@ -1,5 +1,5 @@
 """
-SQLAlchemy models for MARTI (Material, Acquisition, Routings, Tension, Impact).
+SQLAlchemy models for MARTI (Material, Acquisition, Routings, Tradeoffs, Impact).
 
 Material / AcquisitionOrder / Routing are mocked S4 data — this app holds no real S4
 integration, just a shape approximating it closely enough to prove the idea. `procurement_type`
@@ -7,9 +7,9 @@ on Material (E = in-house production, F = external procurement, X = both — the
 field) is what the hybrid manufacturing-project trigger checks, alongside Conway's Depot's own
 `Project.has_manufacturing` flag (see routes/projects.py).
 
-Tension is the one genuinely new structure this app owns: a priority per project, plus the due
+Tradeoffs are the one genuinely new structure this app owns: a priority per project, plus the due
 date Impact is computed from. Impact itself is never stored — it's derived fresh at read time
-from Tension.priority + Tension.due_date vs. today, same "compute, don't cache" convention
+from Tradeoff.priority + Tradeoff.due_date vs. today, same "compute, don't cache" convention
 Value Stream's own metrics engine already follows.
 """
 
@@ -120,13 +120,13 @@ class Routing(db.Model):
         }
 
 
-class Tension(db.Model):
+class Tradeoff(db.Model):
     """One priority + due date per project — the one row per project this app actually owns.
     `due_date` lives here, not on Conway's Depot's own Project — it's MARTI's own lens on the
     project (when the org needs it done), not a core fact about the project the way
     has_manufacturing is."""
 
-    __tablename__ = "tension"
+    __tablename__ = "tradeoff"
 
     id = db.Column(db.String(36), primary_key=True, default=_uuid)
     depot_project_id = db.Column(db.String(36), nullable=False, unique=True, index=True)

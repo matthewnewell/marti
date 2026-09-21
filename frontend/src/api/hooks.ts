@@ -1,6 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { api } from './client'
-import type { ProjectDetail, ProjectSummary, Tension } from './types'
+import type { ProjectDetail, ProjectSummary, Tradeoff } from './types'
 
 export function useProjects() {
   return useQuery({
@@ -21,7 +21,7 @@ export function useUpdateTension(depotProjectId: string) {
   const qc = useQueryClient()
   return useMutation({
     mutationFn: (data: { priority?: string; due_date?: string | null }) =>
-      api.put<Tension>(`/projects/${depotProjectId}/tension`, data),
+      api.put<Tradeoff>(`/projects/${depotProjectId}/tradeoff`, data),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['projects'] })
       qc.invalidateQueries({ queryKey: ['projects', depotProjectId] })

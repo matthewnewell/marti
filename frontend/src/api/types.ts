@@ -15,7 +15,7 @@ export interface Impact {
   days_to_due?: number
 }
 
-export interface Tension {
+export interface Tradeoff {
   id: string
   depot_project_id: string
   priority: Priority
@@ -62,7 +62,7 @@ export interface ProjectSummary {
   name: string
   has_manufacturing: boolean | null
   manufacturing_source: 'depot' | 'material'
-  tension: Tension | null
+  tradeoff: Tradeoff | null
   acquisition_orders_open: number
   acquisition_orders_total: number
   routing_ops_open: number
@@ -75,5 +75,5 @@ export interface ProjectDetail {
   name: string
   has_manufacturing: boolean | null
   materials: Material[]
-  tension: Tension | null
+  tradeoff: Tradeoff | null
 }

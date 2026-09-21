@@ -1,12 +1,12 @@
 """
-Seed data for local development — mocked S4 material/acquisition/routing rows plus a Tension
+Seed data for local development — mocked S4 material/acquisition/routing rows plus a Tradeoff
 entry, against a real Conway's Depot demo project (Bracket Assembly Program) rather than an
 invented one, same "use real seeded demo projects" discipline every sibling app follows."""
 
 from datetime import date, timedelta
 
 from db import db
-from models import AcquisitionOrder, Material, Routing, Tension
+from models import AcquisitionOrder, Material, Routing, Tradeoff
 
 # Demo: Bracket Assembly Program — the same project Value Stream's own demo map and WinMax's
 # demo pursuit are already crosswalked to (see conways-depot's seed.py).
@@ -48,7 +48,7 @@ def seed_if_empty():
         )
     )
     db.session.add(
-        Tension(
+        Tradeoff(
             depot_project_id=BRACKET_ASSEMBLY_PROJECT_ID,
             priority="medium",
             # Within the 14-day Impact window on purpose, so the seeded demo shows a real

@@ -15,6 +15,7 @@ from flask import Flask
 import depot_client
 from db import db
 from routes.projects import bp as projects_bp
+from routes.summary import bp as summary_bp
 
 PROJECT_A = "proj-a"
 PROJECT_B = "proj-b"
@@ -40,6 +41,7 @@ def client(monkeypatch):
     app.config["TESTING"] = True
     db.init_app(app)
     app.register_blueprint(projects_bp)
+    app.register_blueprint(summary_bp)
     with app.app_context():
         db.create_all()
     with app.test_client() as c:
@@ -75,35 +77,35 @@ def test_project_with_only_purchased_material_is_excluded(client):
     assert PROJECT_C not in ids
 
 
-def test_tension_upsert_creates_then_updates(client):
-    res = client.put(f"/api/projects/{PROJECT_A}/tension", json={"priority": "high"})
+def test_tradeoff_upsert_creates_then_updates(client):
+    res = client.put(f"/api/projects/{PROJECT_A}/tradeoff", json={"priority": "high"})
     assert res.status_code == 200
     assert res.get_json()["priority"] == "high"
 
-    res = client.put(f"/api/projects/{PROJECT_A}/tension", json={"priority": "low"})
+    res = client.put(f"/api/projects/{PROJECT_A}/tradeoff", json={"priority": "low"})
     assert res.get_json()["priority"] == "low"
 
 
-def test_tension_rejects_invalid_priority(client):
-    res = client.put(f"/api/projects/{PROJECT_A}/tension", json={"priority": "urgent"})
+def test_tradeoff_rejects_invalid_priority(client):
+    res = client.put(f"/api/projects/{PROJECT_A}/tradeoff", json={"priority": "urgent"})
     assert res.status_code == 400
 
 
 def test_impact_flags_low_priority_with_near_due_date(client):
     due = (date.today() + timedelta(days=5)).isoformat()
-    res = client.put(f"/api/projects/{PROJECT_A}/tension", json={"priority": "low", "due_date": due})
+    res = client.put(f"/api/projects/{PROJECT_A}/tradeoff", json={"priority": "low", "due_date": due})
     impact = res.get_json()["impact"]
     assert impact["flagged"] is True
 
 
 def test_impact_not_flagged_for_high_priority_even_when_due_soon(client):
     due = (date.today() + timedelta(days=1)).isoformat()
-    res = client.put(f"/api/projects/{PROJECT_A}/tension", json={"priority": "high", "due_date": due})
+    res = client.put(f"/api/projects/{PROJECT_A}/tradeoff", json={"priority": "high", "due_date": due})
     impact = res.get_json()["impact"]
     assert impact["flagged"] is False
 
 
 def test_impact_not_flagged_with_no_due_date(client):
-    res = client.put(f"/api/projects/{PROJECT_A}/tension", json={"priority": "low"})
+    res = client.put(f"/api/projects/{PROJECT_A}/tradeoff", json={"priority": "low"})
     impact = res.get_json()["impact"]
     assert impact["flagged"] is False

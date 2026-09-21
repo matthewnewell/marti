@@ -44,14 +44,14 @@
   margin: 0;
 }
 
-.project-detail__tension-form {
+.project-detail__tradeoff-form {
   display: flex;
   align-items: flex-end;
   gap: 16px;
   flex-wrap: wrap;
 }
 
-.project-detail__tension-form label {
+.project-detail__tradeoff-form label {
   display: flex;
   flex-direction: column;
   gap: 4px;
@@ -59,8 +59,8 @@
   color: var(--color-text-secondary);
 }
 
-.project-detail__tension-form select,
-.project-detail__tension-form input {
+.project-detail__tradeoff-form select,
+.project-detail__tradeoff-form input {
   padding: 7px 10px;
   border: 1px solid var(--color-border-strong);
   border-radius: var(--radius-sm);

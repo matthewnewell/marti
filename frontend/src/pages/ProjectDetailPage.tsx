@@ -13,11 +13,11 @@ export default function ProjectDetailPage() {
   const [dueDate, setDueDate] = useState('')
 
   useEffect(() => {
-    if (project?.tension) {
-      setPriority(project.tension.priority)
-      setDueDate(project.tension.due_date ?? '')
+    if (project?.tradeoff) {
+      setPriority(project.tradeoff.priority)
+      setDueDate(project.tradeoff.due_date ?? '')
     }
-  }, [project?.tension])
+  }, [project?.tradeoff])
 
   if (isLoading) return <div className="project-detail__loading">Loading…</div>
   if (!project) return <div className="project-detail__loading">Project not found.</div>
@@ -34,8 +34,8 @@ export default function ProjectDetailPage() {
       <h1>{project.name}</h1>
 
       <section className="project-detail__section">
-        <h2>Tension</h2>
-        <div className="project-detail__tension-form">
+        <h2>Tradeoffs</h2>
+        <div className="project-detail__tradeoff-form">
           <label>
             Priority
             <select value={priority} onChange={(e) => setPriority(e.target.value as Priority)}>
@@ -54,12 +54,12 @@ export default function ProjectDetailPage() {
             {updateTension.isPending ? 'Saving…' : 'Save'}
           </button>
         </div>
-        {project.tension && (
+        {project.tradeoff && (
           <div
-            className={`project-detail__impact${project.tension.impact.flagged ? ' project-detail__impact--flagged' : ''}`}
+            className={`project-detail__impact${project.tradeoff.impact.flagged ? ' project-detail__impact--flagged' : ''}`}
           >
-            {project.tension.impact.flagged ? '⚠ ' : '✓ '}
-            {project.tension.impact.reason}
+            {project.tradeoff.impact.flagged ? '⚠ ' : '✓ '}
+            {project.tradeoff.impact.reason}
           </div>
         )}
       </section>

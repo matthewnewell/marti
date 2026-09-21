@@ -50,6 +50,15 @@ def _run_migrations(app):
                     conn.execute(text(alter_sql))
 
 
+def _rename_tension_table():
+    """One-time carry-over: the `tension` table became `tradeoff`. Rename it in place so existing
+    rows survive; a fresh database has no `tension` table and this does nothing."""
+    tables = set(inspect(db.engine).get_table_names())
+    if "tension" in tables and "tradeoff" not in tables:
+        with db.engine.begin() as conn:
+            conn.execute(text("ALTER TABLE tension RENAME TO tradeoff"))
+
+
 def init_db(app):
     db_path = get_db_path(app)
     app.config["SQLALCHEMY_DATABASE_URI"] = f"sqlite:///{db_path}"
@@ -59,6 +68,7 @@ def init_db(app):
 
     with app.app_context():
         event.listen(db.engine, "connect", _set_sqlite_pragma)
+        _rename_tension_table()
         db.create_all()
 
     _run_migrations(app)

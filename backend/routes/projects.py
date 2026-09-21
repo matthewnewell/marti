@@ -1,8 +1,8 @@
 """
 MARTI's own project-scoped routes — the manufacturing-project list, one project's detail, and
-the Tension (priority + due date) editor. Every project fact itself comes from Conway's Depot
+the Tradeoff (priority + due date) editor. Every project fact itself comes from Conway's Depot
 (depot_client, federated, never copied); this app only ever stores Material/AcquisitionOrder/
-Routing (mocked S4) and Tension (this app's own).
+Routing (mocked S4) and Tradeoff (this app's own).
 """
 
 from datetime import date as date_cls
@@ -11,7 +11,7 @@ from flask import Blueprint, jsonify, request
 
 import depot_client
 from db import db
-from models import PRIORITIES, Material, Tension
+from models import PRIORITIES, Material, Tradeoff
 
 bp = Blueprint("projects", __name__, url_prefix="/api/projects")
 
@@ -30,8 +30,8 @@ def _manufacturing_project_ids_from_materials() -> set[str]:
     return {r[0] for r in rows}
 
 
-def _tension_by_project() -> dict[str, Tension]:
-    return {t.depot_project_id: t for t in Tension.query.all()}
+def _tradeoff_by_project() -> dict[str, Tradeoff]:
+    return {t.depot_project_id: t for t in Tradeoff.query.all()}
 
 
 def _rollup(materials: list[Material]) -> dict:
@@ -68,14 +68,14 @@ def list_manufacturing_projects():
         return jsonify({"projects": [], "depot_reachable": False})
 
     material_trigger_ids = _manufacturing_project_ids_from_materials()
-    tension_by_project = _tension_by_project()
+    tradeoff_by_project = _tradeoff_by_project()
 
     out = []
     for p in depot_projects:
         if not (p.get("has_manufacturing") or p["id"] in material_trigger_ids):
             continue
         materials = Material.query.filter_by(depot_project_id=p["id"]).all()
-        tension = tension_by_project.get(p["id"])
+        tradeoff = tradeoff_by_project.get(p["id"])
         out.append({
             "depot_project_id": p["id"],
             "name": p["name"],
@@ -83,7 +83,7 @@ def list_manufacturing_projects():
             "manufacturing_source": (
                 "depot" if p.get("has_manufacturing") else "material"
             ),
-            "tension": tension.to_dict() if tension else None,
+            "tradeoff": tradeoff.to_dict() if tradeoff else None,
             **_rollup(materials),
         })
     return jsonify({"projects": out, "depot_reachable": True})
@@ -96,19 +96,19 @@ def get_project_detail(depot_project_id):
         return jsonify({"error": "project not found on the Depot, or the Depot is unreachable"}), 404
 
     materials = Material.query.filter_by(depot_project_id=depot_project_id).all()
-    tension = Tension.query.filter_by(depot_project_id=depot_project_id).first()
+    tradeoff = Tradeoff.query.filter_by(depot_project_id=depot_project_id).first()
 
     return jsonify({
         "depot_project_id": depot_project_id,
         "name": project["name"],
         "has_manufacturing": project.get("has_manufacturing"),
         "materials": [m.to_dict() for m in materials],
-        "tension": tension.to_dict() if tension else None,
+        "tradeoff": tradeoff.to_dict() if tradeoff else None,
     })
 
 
-@bp.put("/<depot_project_id>/tension")
-def upsert_tension(depot_project_id):
+@bp.put("/<depot_project_id>/tradeoff")
+def upsert_tradeoff(depot_project_id):
     body = request.get_json(force=True) or {}
 
     priority = body.get("priority")
@@ -122,14 +122,14 @@ def upsert_tension(depot_project_id):
         except ValueError:
             return jsonify({"error": "due_date must be an ISO date (YYYY-MM-DD)"}), 400
 
-    tension = Tension.query.filter_by(depot_project_id=depot_project_id).first()
-    if tension is None:
-        tension = Tension(depot_project_id=depot_project_id, priority=priority or "medium")
-        db.session.add(tension)
+    tradeoff = Tradeoff.query.filter_by(depot_project_id=depot_project_id).first()
+    if tradeoff is None:
+        tradeoff = Tradeoff(depot_project_id=depot_project_id, priority=priority or "medium")
+        db.session.add(tradeoff)
     elif priority is not None:
-        tension.priority = priority
+        tradeoff.priority = priority
     if "due_date" in body:
-        tension.due_date = due_date
+        tradeoff.due_date = due_date
 
     db.session.commit()
-    return jsonify(tension.to_dict())
+    return jsonify(tradeoff.to_dict())

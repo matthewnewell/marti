@@ -3,7 +3,7 @@
 **M**aterial · **A**cquisition · **R**outings · **T**ension · **I**mpact
 
 Manufacturing-side project visibility: mocked S4 material/acquisition/routing status, plus a
-priority (Tension) and a computed risk signal (Impact) layer on top. Meant to eventually
+priority (Tradeoffs) and a computed risk signal (Impact) layer on top. Meant to eventually
 replace Dude, Where's My Part? and Dude, Where's My Order? once validated — not done yet.
 
 ## The idea
@@ -12,8 +12,8 @@ replace Dude, Where's My Part? and Dude, Where's My Order? once validated — no
 master's procurement type (E = in-house production, F = external procurement, X = both) is the
 real S4 field this app leans on, not an invented one.
 
-**Tension** is a priority per project, set by whoever owns it. **Impact** is never stored — it's
-computed fresh from Tension's priority and due date against today, the same "compute, don't
+**Tradeoffs** are a priority per project, set by whoever owns it. **Impact** is never stored — it's
+computed fresh from Tradeoff's priority and due date against today, the same "compute, don't
 cache" convention Value Stream's own metrics engine uses.
 
 **A project shows up here if either is true**: Conway's Depot says the project
@@ -23,7 +23,7 @@ yet) and the material signal alone would miss a young project that hasn't had pa
 
 **Agent and Journal** live in a shared docked side panel (the same file-drawer tab pattern
 Value Stream uses) — Agent is a real, working assistant grounded in the project's own
-materials/routing/acquisition/Tension context, proxied through Conway's Depot
+materials/routing/acquisition/Tradeoff context, proxied through Conway's Depot
 (`AI_PROVIDER=depot`, no API key of this app's own). Journal is a native rendering of the
 Depot's own shared project journal (not the standalone embed widget, which renders as an
 independent floating drawer — incompatible with sharing this panel) — the same feed, entries

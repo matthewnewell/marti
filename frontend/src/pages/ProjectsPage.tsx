@@ -31,14 +31,14 @@ export default function ProjectsPage() {
               <Link key={p.depot_project_id} to={`/projects/${p.depot_project_id}`} className="project-card">
                 <div className="project-card__top">
                   <span className="project-card__name">{p.name}</span>
-                  {p.tension && (
-                    <span className={`project-card__priority project-card__priority--${p.tension.priority}`}>
-                      {PRIORITY_LABEL[p.tension.priority]}
+                  {p.tradeoff && (
+                    <span className={`project-card__priority project-card__priority--${p.tradeoff.priority}`}>
+                      {PRIORITY_LABEL[p.tradeoff.priority]}
                     </span>
                   )}
                 </div>
-                {p.tension?.impact.flagged && (
-                  <div className="project-card__impact">⚠ {p.tension.impact.reason}</div>
+                {p.tradeoff?.impact.flagged && (
+                  <div className="project-card__impact">⚠ {p.tradeoff.impact.reason}</div>
                 )}
                 <div className="project-card__rollup">
                   <span>

@@ -16,16 +16,26 @@
   flex-shrink: 0;
 }
 
-.mt-nav__right {
-  margin-left: auto;
+.mt-nav__links {
+  display: flex;
+  gap: 4px;
 }
 
 .mt-nav__link {
+  padding: 6px 12px;
+  border-radius: var(--radius-sm);
   font-size: 13px;
+  font-weight: 600;
   color: var(--color-text-secondary);
   text-decoration: none;
 }
 
 .mt-nav__link:hover {
+  background: var(--color-surface-sunken);
+  color: var(--color-text);
+}
+
+.mt-nav__link--active {
+  background: var(--color-accent-soft);
   color: var(--color-accent);
 }

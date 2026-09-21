@@ -1,34 +1,34 @@
 """
 MARTI's Agent tab — an ongoing conversation about one manufacturing project, grounded in its
-materials, acquisition orders, routing status, and Tension/Impact. Same shape as Value Stream's
+materials, acquisition orders, routing status, and Tradeoff/Impact. Same shape as Value Stream's
 own routes/ai.py: the frontend owns conversation history, this route rebuilds the project's
-context fresh on every call so a Tension edit made mid-conversation is reflected immediately.
+context fresh on every call so a Tradeoff edit made mid-conversation is reflected immediately.
 """
 
 from flask import Blueprint, jsonify, request
 
 import ai_client
 import depot_client
-from models import Material, Tension
+from models import Material, Tradeoff
 
 bp = Blueprint("ai", __name__, url_prefix="/api/projects")
 
 
 def _build_context_lines(depot_project_id: str, project_name: str) -> list[str]:
     materials = Material.query.filter_by(depot_project_id=depot_project_id).all()
-    tension = Tension.query.filter_by(depot_project_id=depot_project_id).first()
+    tradeoff = Tradeoff.query.filter_by(depot_project_id=depot_project_id).first()
 
     lines = [f'Project: "{project_name}"']
 
-    if tension:
-        impact = tension.impact()
+    if tradeoff:
+        impact = tradeoff.impact()
         lines.append(
-            f"Tension (priority): {tension.priority}"
-            + (f", due {tension.due_date.isoformat()}" if tension.due_date else ", no due date set")
+            f"Tradeoffs (priority): {tradeoff.priority}"
+            + (f", due {tradeoff.due_date.isoformat()}" if tradeoff.due_date else ", no due date set")
         )
         lines.append(f"Impact: {impact['reason']}")
     else:
-        lines.append("Tension (priority): not set yet.")
+        lines.append("Tradeoffs (priority): not set yet.")
 
     if not materials:
         lines.append("No materials on file for this project yet.")
@@ -55,8 +55,8 @@ def _build_context_lines(depot_project_id: str, project_name: str) -> list[str]:
 
 _SYSTEM = (
     "You help a program/functional manager track material acquisition, manufacturing "
-    "routings, and priority (Tension) for one project. Ground every answer in the specific "
-    "materials, orders, routing operations, and Tension/Impact data given below — never give "
+    "routings, and priority (Tradeoff) for one project. Ground every answer in the specific "
+    "materials, orders, routing operations, and Tradeoff/Impact data given below — never give "
     "generic supply-chain advice unconnected to this project. If asked about something the "
     "data can't answer, say so plainly rather than guessing."
 )
