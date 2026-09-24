@@ -1,2 +1,267 @@
-/* Page-level layout is per-page (ProjectsPage, SplashPage each manage their own scroll);
-   AppLayout (the project-detail shell) has its own CSS. Nothing global needed here yet. */
+/* Shared bits used across pages: status chips, slack values, page shell. Page-specific layout
+   lives in each page's own CSS. */
+
+.page__content {
+  max-width: 1120px;
+  margin: 0 auto;
+  width: 100%;
+  padding: 28px 20px 96px;
+}
+
+.page__content h1 {
+  font-size: 1.45rem;
+  margin: 0 0 4px;
+}
+
+.page__sub {
+  color: var(--color-text-secondary);
+  margin: 0 0 22px;
+  font-size: 0.9rem;
+  max-width: 760px;
+}
+
+.page__empty {
+  color: var(--color-text-faint);
+  font-style: italic;
+}
+
+.card {
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+}
+
+.chip {
+  display: inline-block;
+  flex-shrink: 0;
+  font-size: 10.5px;
+  font-weight: 700;
+  padding: 2px 8px;
+  border-radius: 999px;
+  white-space: nowrap;
+  background: var(--color-surface-sunken);
+  color: var(--color-text-secondary);
+}
+
+.chip--on_track,
+.chip--op-done {
+  background: var(--color-success-soft);
+  color: var(--color-success);
+}
+
+.chip--at_risk,
+.chip--op-queued {
+  background: var(--color-wait-soft);
+  color: var(--color-wait);
+}
+
+.chip--late,
+.chip--blocked,
+.chip--op-on_hold {
+  background: var(--color-critical-soft);
+  color: var(--color-critical);
+}
+
+.chip--op-in_process {
+  background: var(--color-accent-soft);
+  color: var(--color-accent);
+}
+
+.chip--quality {
+  background: #f3e8ff;
+  color: #7e22ce;
+}
+
+.chip--quality-closed {
+  background: var(--color-surface-sunken);
+  color: var(--color-text-faint);
+  text-decoration: line-through;
+}
+
+.slack {
+  font-family: var(--font-mono);
+  font-weight: 700;
+  font-size: 13px;
+}
+
+.slack--ok {
+  color: var(--color-success);
+}
+
+.slack--risk {
+  color: var(--color-wait);
+}
+
+.slack--late {
+  color: var(--color-critical);
+}
+
+.impact-reason {
+  font-size: 12px;
+  color: var(--color-text-secondary);
+}
+
+.impact-reason--blocked {
+  color: var(--color-critical);
+}
+
+.mono {
+  font-family: var(--font-mono);
+  font-size: 12px;
+}
+
+.muted {
+  color: var(--color-text-faint);
+}
+
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  font-size: 12px;
+  color: var(--color-text-secondary);
+}
+
+.field input,
+.field textarea,
+.input {
+  padding: 7px 10px;
+  border: 1px solid var(--color-border-strong);
+  border-radius: var(--radius-sm);
+  font-size: 13px;
+  background: var(--color-surface);
+}
+
+.basis-note {
+  font-size: 11.5px;
+  color: var(--color-text-faint);
+}
+
+.to-bad {
+  color: var(--color-critical);
+  font-weight: 700;
+}
+
+.to-good {
+  color: var(--color-success);
+  font-weight: 700;
+}
+
+.to-error {
+  color: var(--color-critical);
+  font-size: 12.5px;
+}
+
+.src-tag {
+  display: inline-block;
+  font-size: 10.5px;
+  font-weight: 700;
+  padding: 1px 8px;
+  border-radius: 999px;
+  margin-left: 8px;
+  background: var(--color-surface-sunken);
+  color: var(--color-text-secondary);
+}
+
+.src-tag--engine {
+  background: #e0f2fe;
+  color: #0369a1;
+}
+
+.src-tag--ai {
+  background: #f3e8ff;
+  color: #7e22ce;
+}
+
+.src-tag + .src-tag,
+strong + .src-tag,
+span + .src-tag {
+  margin-left: 8px;
+}
+
+.toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin: 16px 0 10px;
+  font-size: 13px;
+}
+
+.toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12.5px;
+  color: var(--color-text-secondary);
+  cursor: pointer;
+}
+
+.pd__impact {
+  margin-bottom: 14px;
+}
+
+/* The advisor bar: top-of-page entry to suggestions / what-ifs / Ask AI (Triage, Constraints). */
+.adv-bar {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 8px 10px 8px 14px;
+  margin-bottom: 10px;
+  flex-wrap: wrap;
+  font-size: 13px;
+}
+
+.adv-bar__lead {
+  flex: 1;
+  min-width: 260px;
+}
+
+.adv-bar__try {
+  margin-left: 8px;
+  border: 1px solid var(--color-accent);
+  background: var(--color-accent-soft);
+  color: var(--color-accent);
+  font-weight: 700;
+  font-size: 12px;
+  border-radius: var(--radius-sm);
+  padding: 2px 10px;
+}
+
+.adv-bar__tabs {
+  display: inline-flex;
+  background: var(--color-surface-sunken);
+  border-radius: var(--radius-sm);
+  padding: 3px;
+  gap: 2px;
+}
+
+.adv-bar__tabs button {
+  border: none;
+  background: none;
+  padding: 5px 12px;
+  border-radius: 4px;
+  font-size: 12.5px;
+  font-weight: 700;
+  color: var(--color-text-secondary);
+}
+
+.adv-bar__tabs .adv-bar__tab--on {
+  background: var(--color-surface);
+  color: var(--color-accent);
+  box-shadow: var(--shadow-sm);
+}
+
+.adv-bar__count {
+  margin-left: 6px;
+  font-size: 10.5px;
+  color: var(--color-success);
+}
+
+.adv-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin-bottom: 14px;
+}
+

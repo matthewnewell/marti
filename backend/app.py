@@ -7,9 +7,16 @@ load_dotenv(os.path.join(os.path.dirname(os.path.abspath(__file__)), ".env"))
 from flask import Flask, send_from_directory
 
 from db import init_db
+from routes.advisor_ai import bp as advisor_ai_bp
 from routes.ai import bp as ai_bp
+from routes.constraints import bp as constraints_bp
+from routes.hot_flags import bp as hot_flags_bp
+from routes.people import bp as people_bp
 from routes.projects import bp as projects_bp
+from routes.proposals import bp as proposals_bp
 from routes.summary import bp as summary_bp
+from routes.triage import bp as triage_bp
+from routes.views import bp as views_bp
 from seed import seed_if_empty
 
 FRONTEND_DIST = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "frontend", "dist")
@@ -23,6 +30,13 @@ def create_app():
     app.register_blueprint(projects_bp)
     app.register_blueprint(ai_bp)
     app.register_blueprint(summary_bp)
+    app.register_blueprint(triage_bp)
+    app.register_blueprint(views_bp)
+    app.register_blueprint(proposals_bp)
+    app.register_blueprint(advisor_ai_bp)
+    app.register_blueprint(constraints_bp)
+    app.register_blueprint(hot_flags_bp)
+    app.register_blueprint(people_bp)
 
     with app.app_context():
         seed_if_empty()

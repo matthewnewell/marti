@@ -21,3 +21,6 @@ frontend/.vite/
 # OS / editor
 .DS_Store
 Thumbs.db
+
+# Old database files set aside by hand
+data-backup/

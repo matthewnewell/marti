@@ -1,0 +1,122 @@
+/* --- acquisition --- */
+
+.acq {
+  overflow-x: auto;
+}
+
+.acq__row {
+  display: grid;
+  grid-template-columns: minmax(200px, 1.4fr) 82px 204px minmax(200px, 1.3fr) 70px 90px;
+  gap: 12px;
+  align-items: center;
+  padding: 10px 14px;
+  border-top: 1px solid var(--color-border);
+  font-size: 13px;
+  min-width: 900px;
+}
+
+.acq__row--head {
+  border-top: none;
+  background: var(--color-surface-sunken);
+  font-size: 10.5px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  color: var(--color-text-faint);
+}
+
+.acq__row--consumed {
+  opacity: 0.55;
+}
+
+.acq__material {
+  display: flex;
+  flex-direction: column;
+}
+
+.acq__desc,
+.acq__sub {
+  font-size: 11.5px;
+  color: var(--color-text-secondary);
+}
+
+.acq__for {
+  font-size: 11.5px;
+  color: var(--color-text-secondary);
+}
+
+.acq__steps-head,
+.acq__steps {
+  display: grid;
+  grid-template-columns: repeat(6, 1fr);
+  justify-items: center;
+}
+
+.acq__steps-head span {
+  font-size: 9.5px;
+  letter-spacing: 0;
+  cursor: help;
+}
+
+.acq__plant {
+  color: var(--color-success);
+}
+
+.acq__dot {
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  border: 2px solid var(--color-border-strong);
+  background: var(--color-surface);
+}
+
+.acq__dot--done {
+  background: var(--color-success);
+  border-color: var(--color-success);
+}
+
+.acq__dot--next {
+  border-color: var(--color-wait);
+  background: var(--color-wait-soft);
+}
+
+.acq__dot--bad {
+  border-color: var(--color-critical);
+  background: var(--color-critical-soft);
+}
+
+.acq__inhouse {
+  grid-column: 1 / -1;
+  font-size: 11.5px;
+  color: var(--color-accent);
+  font-weight: 600;
+}
+
+.acq__status {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  font-weight: 600;
+}
+
+.acq__stage--bad {
+  color: var(--color-critical);
+  font-weight: 700;
+}
+
+.acq__date {
+  display: flex;
+  flex-direction: column;
+  font-size: 12.5px;
+}
+
+.acq__late {
+  font-size: 10.5px;
+  font-weight: 700;
+  color: var(--color-critical);
+}
+
+.acq__row--focus {
+  background: var(--color-accent-soft);
+  box-shadow: inset 3px 0 0 var(--color-accent);
+}

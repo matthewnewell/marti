@@ -32,9 +32,13 @@ def _set_sqlite_pragma(dbapi_conn, connection_record):
     cursor.close()
 
 
-# (table_name, column_name, add_column_sql) — additive-only, run after create_all(). Empty for
-# now; add entries here instead of ever altering a column in place.
-_MIGRATIONS: list[tuple[str, str, str]] = []
+# (table_name, column_name, add_column_sql) — additive-only, run after create_all(). Add entries
+# here instead of ever altering a column in place.
+_MIGRATIONS: list[tuple[str, str, str]] = [
+    ("priority_change", "source", "ALTER TABLE priority_change ADD COLUMN source VARCHAR(20) NOT NULL DEFAULT 'person'"),
+    ("priority_change", "proposal_id", "ALTER TABLE priority_change ADD COLUMN proposal_id VARCHAR(36)"),
+    ("priority_change", "person_id", "ALTER TABLE priority_change ADD COLUMN person_id VARCHAR(36)"),
+]
 
 
 def _run_migrations(app):
@@ -50,15 +54,6 @@ def _run_migrations(app):
                     conn.execute(text(alter_sql))
 
 
-def _rename_tension_table():
-    """One-time carry-over: the `tension` table became `tradeoff`. Rename it in place so existing
-    rows survive; a fresh database has no `tension` table and this does nothing."""
-    tables = set(inspect(db.engine).get_table_names())
-    if "tension" in tables and "tradeoff" not in tables:
-        with db.engine.begin() as conn:
-            conn.execute(text("ALTER TABLE tension RENAME TO tradeoff"))
-
-
 def init_db(app):
     db_path = get_db_path(app)
     app.config["SQLALCHEMY_DATABASE_URI"] = f"sqlite:///{db_path}"
@@ -68,7 +63,6 @@ def init_db(app):
 
     with app.app_context():
         event.listen(db.engine, "connect", _set_sqlite_pragma)
-        _rename_tension_table()
         db.create_all()
 
     _run_migrations(app)

@@ -1,59 +1,56 @@
 """
-The Launchpad's app-summary contract for MARTI — what this app's tile shows on a project's page in
+The Launchpad's app-summary contract for MARTI: what this app's tile shows on a project's page in
 Conway's Depot (see the Depot's routes/applications.py for the proxy; it renders `headline`/
-`label`/`status` opaquely and never interprets them). `project_id` is the Depot's own project id
-(MARTI is Depot-aware, so the Depot passes it through unchanged).
+`label`/`status` opaquely and never interprets them). `project_id` is the Depot's own project id.
 
-Headline is the open routing operations (the thing that says whether work is actually moving);
-the label adds open orders and, when the Tradeoff/Impact rule flags the project, the reason. A
-flagged Impact is the one thing worth turning the tile yellow for.
+Headline is the Impact: days of slack to the need-by date (negative = late), or "Blocked" when S4
+can't date something in the way. Late, blocked, and at-risk turn the tile yellow.
 """
 
 import os
 
 from flask import Blueprint, jsonify, request
 
-from models import Material, Tradeoff
-from routes.projects import _rollup
+import service
 
 bp = Blueprint("summary", __name__, url_prefix="/api")
 
 FRONTEND_BASE_URL = os.environ.get("FRONTEND_BASE_URL", "http://localhost:5188")
 
+_WARN = ("late", "blocked", "at_risk")
+
 
 @bp.get("/summary")
 def summary():
     project_id = request.args.get("project_id")
+    ctx = service.context()
+    projects = ctx["forecast"]["projects"]
 
     if not project_id:
-        # Personal/portfolio-level tile: how many projects the Impact rule is flagging right now.
-        flagged = sum(1 for t in Tradeoff.query.all() if t.impact()["flagged"])
+        trouble = [p for p in projects.values() if p["status"] in ("late", "blocked")]
         return jsonify({
-            "headline": str(flagged),
-            "label": "manufacturing project" + ("" if flagged == 1 else "s") + " flagged",
-            "status": "warn" if flagged else "ok",
-            "href": f"{FRONTEND_BASE_URL}/",
+            "headline": str(len(trouble)),
+            "label": "manufacturing project" + ("" if len(trouble) == 1 else "s") + " late or blocked",
+            "status": "warn" if trouble else "ok",
+            "href": f"{FRONTEND_BASE_URL}/triage",
         })
 
-    materials = Material.query.filter_by(depot_project_id=project_id).all()
-    tradeoff = Tradeoff.query.filter_by(depot_project_id=project_id).first()
-    href = f"{FRONTEND_BASE_URL}/projects/{project_id}"
-
-    if not materials and tradeoff is None:
+    href = f"{FRONTEND_BASE_URL}/routing?project={project_id}"
+    p = projects.get(project_id)
+    if p is None or p["status"] == "no_orders":
         return jsonify({"headline": None, "label": "No manufacturing data yet", "status": None, "href": href})
 
-    roll = _rollup(materials)
-    label = f"routing ops open · {roll['acquisition_orders_open']} order" + (
-        "" if roll["acquisition_orders_open"] == 1 else "s"
-    ) + " open"
-    impact = tradeoff.impact() if tradeoff else None
-    flagged = bool(impact and impact["flagged"])
-    if flagged:
-        label += f" · {impact['reason']}"
-
+    if p["status"] == "blocked":
+        headline, label = "Blocked", p["blocker"]["reason"]
+    elif p["slack_days"] is None:
+        headline, label = f"#{p['rank']}", f"forecast finish {p['projected_finish']} · no need-by date set"
+    else:
+        s = p["slack_days"]
+        headline = f"{s:+d}d"
+        label = (f"{'late' if s < 0 else 'slack'} to need-by {p['need_by']} · rank #{p['rank']}")
     return jsonify({
-        "headline": str(roll["routing_ops_open"]),
+        "headline": headline,
         "label": label,
-        "status": "warn" if flagged else "ok",
+        "status": "warn" if p["status"] in _WARN else "ok",
         "href": href,
     })

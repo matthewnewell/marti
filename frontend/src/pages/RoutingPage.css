@@ -1,0 +1,30 @@
+.rp-project {
+  margin-bottom: 22px;
+}
+
+.rp-project__head {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+  margin-bottom: 8px;
+  font-size: 13px;
+}
+
+.rp-project__rank {
+  font-weight: 800;
+  color: var(--color-text-secondary);
+}
+
+.rp-project__name {
+  border: none;
+  background: none;
+  padding: 0;
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--color-text);
+}
+
+.rp-project__name:hover {
+  color: var(--color-accent);
+  text-decoration: underline;
+}

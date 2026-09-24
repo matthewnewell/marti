@@ -39,3 +39,74 @@
   background: var(--color-accent-soft);
   color: var(--color-accent);
 }
+
+.mt-nav__badge {
+  display: inline-block;
+  margin-left: 6px;
+  min-width: 18px;
+  padding: 1px 6px;
+  border-radius: 999px;
+  background: var(--color-critical);
+  color: #fff;
+  font-size: 10.5px;
+  font-weight: 700;
+  text-align: center;
+}
+
+.mt-nav__right {
+  margin-left: auto;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.mt-nav__scope {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  border: 1px solid var(--color-border-strong);
+  border-radius: var(--radius-sm);
+  padding: 3px 4px 3px 10px;
+  background: var(--color-surface);
+}
+
+.mt-nav__scope--on {
+  border-color: var(--color-accent);
+  background: var(--color-accent-soft);
+}
+
+.mt-nav__scope-label {
+  font-size: 10.5px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--color-text-faint);
+}
+
+.mt-nav__scope select {
+  border: none;
+  background: transparent;
+  font-size: 12.5px;
+  font-weight: 600;
+  max-width: 220px;
+  padding: 3px 2px;
+}
+
+.mt-nav__bell {
+  position: relative;
+  text-decoration: none;
+  font-size: 16px;
+  padding: 4px 6px;
+  border-radius: var(--radius-sm);
+}
+
+.mt-nav__bell:hover {
+  background: var(--color-surface-sunken);
+}
+
+.mt-nav__bell .mt-nav__badge {
+  position: absolute;
+  top: -4px;
+  right: -6px;
+  margin-left: 0;
+}

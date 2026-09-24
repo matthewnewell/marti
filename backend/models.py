@@ -1,164 +1,387 @@
 """
-SQLAlchemy models for MARTI (Material, Acquisition, Routings, Tradeoffs, Impact).
+SQLAlchemy models for MARTI (Material Acquisition, Routing, Triage, Impact).
 
-Material / AcquisitionOrder / Routing are mocked S4 data — this app holds no real S4
-integration, just a shape approximating it closely enough to prove the idea. `procurement_type`
-on Material (E = in-house production, F = external procurement, X = both — the real S4 MRP2
-field) is what the hybrid manufacturing-project trigger checks, alongside Conway's Depot's own
-`Project.has_manufacturing` flag (see routes/projects.py).
+**The S4 rule**: every table below except the last group is a mocked copy of something S4
+actually holds, and each class names its S4 source. MARTI never invents a field S4 couldn't
+hand it over an API — no "expected time per operation" beyond the routing's own standard
+values, no fudge factors, no made-up promise dates. When S4 doesn't know something (a PO the
+supplier hasn't confirmed, a PR nobody has released), MARTI says so rather than guessing.
 
-Tradeoffs are the one genuinely new structure this app owns: a priority per project, plus the due
-date Impact is computed from. Impact itself is never stored — it's derived fresh at read time
-from Tradeoff.priority + Tradeoff.due_date vs. today, same "compute, don't cache" convention
-Value Stream's own metrics engine already follows.
+The one input that isn't S4 is a Component whose material has no S4 master yet — that line
+arrives from the engineering BOM before anyone has created the master, which is exactly why
+"master missing" is worth showing at all.
+
+**MARTI's own tables** (the last group): ProjectRank (Triage — the stack rank and need-by date
+leadership sets), PriorityChange (the log of every re-rank, who and why, and where the idea came
+from), HotFlag (expedite requests raised automatically when a project moves up), and Proposal (a
+suggested re-rank or capacity change from MARTI's engine, the AI, or a person, waiting on a
+human decision). Impact is never stored —
+scheduler.py computes it fresh from all of the above on every read.
 """
 
-from datetime import date, datetime, timezone
+from datetime import datetime, timezone
 
 from db import _uuid, db
 
-PROCUREMENT_TYPES = ("E", "F", "X")  # in-house production, external procurement, both
-ACQUISITION_STATUSES = ("open", "released", "received", "on_hold")
-ROUTING_STATUSES = ("not_started", "in_process", "complete", "on_hold")
-PRIORITIES = ("high", "medium", "low")
+PROCUREMENT_TYPES = ("E", "F", "X")  # MARC-BESKZ: in-house production, external procurement, both
+PR_RELEASE_STATUSES = ("not_released", "released")  # EBAN-FRGKZ, collapsed to the one fact that matters
+INSPECTION_STATUSES = ("none", "in_qi", "accepted", "rejected")  # QALS usage decision on the GR lot
+QUALITY_DESIGNATORS = ("defect", "rework", "mrb_hold", "scrap")  # MARTI's grouping of QMEL codings
+FLAG_STATUSES = ("open", "acknowledged", "resolved")
+PROPOSAL_SOURCES = ("engine", "ai", "person")  # who suggested it; a person always commits
+PROPOSAL_KINDS = ("rerank", "capacity")
+PROPOSAL_STATUSES = ("open", "committed", "accepted", "dismissed")
 
 
 def _now():
-    return datetime.now(timezone.utc)
+    """Naive UTC. Every timestamp MARTI stores or compares is naive UTC."""
+    return datetime.now(timezone.utc).replace(tzinfo=None)
 
 
-class Material(db.Model):
-    """One mocked S4 material master row, tied directly to a Conway's Depot project id — MARTI
-    isn't Depot-unaware the way Value Stream is; it already reads Depot's own project list via
-    depot_client, so there's no crosswalk indirection needed here."""
+def _iso(value):
+    """Dates as YYYY-MM-DD; datetimes as UTC with a Z so the browser shows local time."""
+    if not value:
+        return None
+    return value.isoformat() + "Z" if isinstance(value, datetime) else value.isoformat()
 
-    __tablename__ = "material"
 
-    id = db.Column(db.String(36), primary_key=True, default=_uuid)
-    depot_project_id = db.Column(db.String(36), nullable=False, index=True)
-    material_number = db.Column(db.String(60), nullable=False)
-    description = db.Column(db.Text, nullable=True)
-    # E or X here is the hybrid trigger's other half — see routes/projects.py's
-    # _projects_with_manufacturing.
-    procurement_type = db.Column(db.String(1), nullable=False, default="F")
-    created_at = db.Column(db.DateTime, default=_now, nullable=False)
+# --- Mocked S4 ---------------------------------------------------------------------------------
 
-    acquisition_orders = db.relationship(
-        "AcquisitionOrder", back_populates="material", cascade="all, delete-orphan", lazy="selectin"
-    )
-    routings = db.relationship(
-        "Routing", back_populates="material", cascade="all, delete-orphan", lazy="selectin",
-        order_by="Routing.operation_seq",
-    )
+
+class WorkCenter(db.Model):
+    """S4: CRHD (work center) + KAKO (available capacity). `capacity_hours_per_day` is the
+    capacity header's available hours per working day — the only capacity fact the forecast
+    uses."""
+
+    __tablename__ = "work_center"
+
+    code = db.Column(db.String(20), primary_key=True)  # CRHD-ARBPL
+    description = db.Column(db.String(120), nullable=False)
+    capacity_hours_per_day = db.Column(db.Float, nullable=False, default=8.0)
 
     def to_dict(self) -> dict:
         return {
-            "id": self.id,
-            "depot_project_id": self.depot_project_id,
+            "code": self.code,
+            "description": self.description,
+            "capacity_hours_per_day": self.capacity_hours_per_day,
+        }
+
+
+class MaterialMaster(db.Model):
+    """S4: MARA/MARC (+ MARD for stock). A material with no row here has no S4 master."""
+
+    __tablename__ = "material_master"
+
+    material_number = db.Column(db.String(40), primary_key=True)  # MATNR
+    description = db.Column(db.String(200), nullable=False)  # MAKTX
+    procurement_type = db.Column(db.String(1), nullable=False, default="F")  # MARC-BESKZ
+    unit = db.Column(db.String(10), nullable=False, default="EA")  # MARA-MEINS
+    # MARD-LABST — unrestricted plant stock, for common items not bought against a project.
+    unrestricted_stock = db.Column(db.Float, nullable=False, default=0)
+
+    def to_dict(self) -> dict:
+        return {
             "material_number": self.material_number,
             "description": self.description,
             "procurement_type": self.procurement_type,
-            "created_at": self.created_at.isoformat(),
-            "acquisition_orders": [a.to_dict() for a in self.acquisition_orders],
-            "routings": [r.to_dict() for r in self.routings],
+            "unit": self.unit,
+            "unrestricted_stock": self.unrestricted_stock,
         }
 
 
-class AcquisitionOrder(db.Model):
-    """One mocked purchase order / acquisition record against a material — the old Dude,
-    Where's My Order? job."""
+class PurchaseRequisition(db.Model):
+    """S4: EBAN. `depot_project_id` stands in for the WBS account assignment (EBKN-PS_PSP_PNR)
+    — how S4 itself ties a requisition to a project."""
 
-    __tablename__ = "acquisition_order"
+    __tablename__ = "purchase_requisition"
 
     id = db.Column(db.String(36), primary_key=True, default=_uuid)
-    material_id = db.Column(db.String(36), db.ForeignKey("material.id"), nullable=False, index=True)
-    order_number = db.Column(db.String(60), nullable=False)
-    status = db.Column(db.String(20), nullable=False, default="open")  # see ACQUISITION_STATUSES
-    need_date = db.Column(db.Date, nullable=True)
-    promise_date = db.Column(db.Date, nullable=True)
-    created_at = db.Column(db.DateTime, default=_now, nullable=False)
-
-    material = db.relationship("Material", back_populates="acquisition_orders")
+    pr_number = db.Column(db.String(20), nullable=False)  # BANFN
+    depot_project_id = db.Column(db.String(36), nullable=False, index=True)
+    material_number = db.Column(db.String(40), nullable=False, index=True)
+    quantity = db.Column(db.Float, nullable=False)
+    release_status = db.Column(db.String(20), nullable=False, default="not_released")
+    created_on = db.Column(db.Date, nullable=False)  # BADAT
 
     def to_dict(self) -> dict:
         return {
             "id": self.id,
-            "material_id": self.material_id,
-            "order_number": self.order_number,
-            "status": self.status,
-            "need_date": self.need_date.isoformat() if self.need_date else None,
-            "promise_date": self.promise_date.isoformat() if self.promise_date else None,
-            "created_at": self.created_at.isoformat(),
+            "pr_number": self.pr_number,
+            "material_number": self.material_number,
+            "quantity": self.quantity,
+            "release_status": self.release_status,
+            "created_on": _iso(self.created_on),
         }
 
 
-class Routing(db.Model):
-    """One mocked manufacturing operation against a material — the old Dude, Where's My Part?
-    job."""
+class PurchaseOrder(db.Model):
+    """S4: EKKO/EKPO (header/item), EKET (requested delivery date), EKES (supplier
+    confirmation), MSEG movement 101 (goods receipt), QALS (the GR inspection lot's usage
+    decision). `confirmed_date` is null until the supplier actually confirms — the forecast
+    falls back to the requested date and labels it unconfirmed, never invents one."""
 
-    __tablename__ = "routing"
+    __tablename__ = "purchase_order"
 
     id = db.Column(db.String(36), primary_key=True, default=_uuid)
-    material_id = db.Column(db.String(36), db.ForeignKey("material.id"), nullable=False, index=True)
-    operation_seq = db.Column(db.Integer, nullable=False, default=10)
-    operation_name = db.Column(db.String(120), nullable=False)
-    work_center = db.Column(db.String(60), nullable=True)
-    status = db.Column(db.String(20), nullable=False, default="not_started")  # see ROUTING_STATUSES
-    created_at = db.Column(db.DateTime, default=_now, nullable=False)
-
-    material = db.relationship("Material", back_populates="routings")
+    po_number = db.Column(db.String(20), nullable=False)  # EBELN
+    pr_number = db.Column(db.String(20), nullable=True)  # EKPO-BANFN
+    depot_project_id = db.Column(db.String(36), nullable=False, index=True)  # WBS account assignment
+    material_number = db.Column(db.String(40), nullable=False, index=True)
+    supplier = db.Column(db.String(120), nullable=True)  # EKKO-LIFNR (name, for display)
+    quantity = db.Column(db.Float, nullable=False)
+    created_on = db.Column(db.Date, nullable=False)  # EKKO-BEDAT
+    requested_date = db.Column(db.Date, nullable=False)  # EKET-EINDT
+    confirmed_date = db.Column(db.Date, nullable=True)  # EKES-EINDT
+    gr_date = db.Column(db.Date, nullable=True)  # MSEG-BUDAT, movement 101
+    inspection_status = db.Column(db.String(20), nullable=False, default="none")
 
     def to_dict(self) -> dict:
         return {
             "id": self.id,
-            "material_id": self.material_id,
+            "po_number": self.po_number,
+            "pr_number": self.pr_number,
+            "material_number": self.material_number,
+            "supplier": self.supplier,
+            "quantity": self.quantity,
+            "created_on": _iso(self.created_on),
+            "requested_date": _iso(self.requested_date),
+            "confirmed_date": _iso(self.confirmed_date),
+            "gr_date": _iso(self.gr_date),
+            "inspection_status": self.inspection_status,
+        }
+
+
+class ProductionOrder(db.Model):
+    """S4: AFKO/AFPO. `released_at` (system status REL) is when the order's first operation
+    started waiting — its arrival at the first work center."""
+
+    __tablename__ = "production_order"
+
+    id = db.Column(db.String(36), primary_key=True, default=_uuid)
+    order_number = db.Column(db.String(20), nullable=False, unique=True)  # AUFNR
+    depot_project_id = db.Column(db.String(36), nullable=False, index=True)  # WBS assignment
+    material_number = db.Column(db.String(40), nullable=False)  # what this order makes
+    quantity = db.Column(db.Float, nullable=False)  # GAMNG
+    released_at = db.Column(db.DateTime, nullable=True)
+
+    operations = db.relationship(
+        "Operation", back_populates="order", cascade="all, delete-orphan", lazy="selectin",
+        order_by="Operation.seq",
+    )
+    components = db.relationship(
+        "Component", back_populates="order", cascade="all, delete-orphan", lazy="selectin",
+    )
+
+
+class Operation(db.Model):
+    """S4: AFVC/AFVV (routing operation + standard values) and AFRU (confirmations).
+
+    Standard values are exactly what the routing holds — setup hours (VGW01) and run hours per
+    unit (VGW02 over the base quantity). Actuals are confirmation timestamps and quantities:
+    first confirmation start (ISDD/ISDZ), final confirmation finish (IEDD/IEDZ), yield (LMNGA),
+    scrap (XMNGA), rework (RMNGA).
+
+    Arrival at the work center is never stored — it's the previous operation's final
+    confirmation (or the order's release for the first one). Dwell = now − arrival, wall clock,
+    same "no fake precision" stance Dude, Where's My Part? took."""
+
+    __tablename__ = "operation"
+
+    id = db.Column(db.String(36), primary_key=True, default=_uuid)
+    order_id = db.Column(db.String(36), db.ForeignKey("production_order.id"), nullable=False, index=True)
+    seq = db.Column(db.Integer, nullable=False)  # VORNR
+    description = db.Column(db.String(120), nullable=False)  # LTXA1
+    work_center = db.Column(db.String(20), db.ForeignKey("work_center.code"), nullable=False)
+    setup_hours = db.Column(db.Float, nullable=False, default=0)  # VGW01
+    run_hours_per_unit = db.Column(db.Float, nullable=False, default=0)  # VGW02 / base qty
+    started_at = db.Column(db.DateTime, nullable=True)
+    finished_at = db.Column(db.DateTime, nullable=True)
+    yield_qty = db.Column(db.Float, nullable=False, default=0)
+    scrap_qty = db.Column(db.Float, nullable=False, default=0)
+    rework_qty = db.Column(db.Float, nullable=False, default=0)
+
+    order = db.relationship("ProductionOrder", back_populates="operations")
+
+
+class Component(db.Model):
+    """S4: RESB — a production order's component reservation, including the operation it's
+    allocated to (RESB-VORNR), which is what lets MARTI say *which step* is waiting on material
+    rather than just "the order is short something."
+
+    The one exception to the S4 rule: before a master exists, the line comes from the
+    engineering BOM, and `material_number` has no MaterialMaster row. That's the "master
+    missing" state."""
+
+    __tablename__ = "component"
+
+    id = db.Column(db.String(36), primary_key=True, default=_uuid)
+    order_id = db.Column(db.String(36), db.ForeignKey("production_order.id"), nullable=False, index=True)
+    operation_seq = db.Column(db.Integer, nullable=False)  # RESB-VORNR
+    material_number = db.Column(db.String(40), nullable=False)  # RESB-MATNR
+    description = db.Column(db.String(200), nullable=True)  # from the eBOM when no master yet
+    quantity = db.Column(db.Float, nullable=False)  # RESB-BDMNG
+
+    order = db.relationship("ProductionOrder", back_populates="components")
+
+
+class QualityNotification(db.Model):
+    """S4: QMEL (+ QMFE defect items), against a production order operation. `designator` is
+    MARTI's grouping of the notification's coding into the four things a manager scans for.
+    An open `mrb_hold` stops the operation — the forecast won't move past it."""
+
+    __tablename__ = "quality_notification"
+
+    id = db.Column(db.String(36), primary_key=True, default=_uuid)
+    notification_number = db.Column(db.String(20), nullable=False)  # QMNUM
+    order_id = db.Column(db.String(36), db.ForeignKey("production_order.id"), nullable=False, index=True)
+    operation_seq = db.Column(db.Integer, nullable=False)
+    designator = db.Column(db.String(20), nullable=False)  # see QUALITY_DESIGNATORS
+    description = db.Column(db.Text, nullable=False)  # QMTXT
+    quantity = db.Column(db.Float, nullable=True)
+    created_at = db.Column(db.DateTime, nullable=False, default=_now)  # QMDAT
+    closed_at = db.Column(db.DateTime, nullable=True)  # completion date
+
+    def to_dict(self) -> dict:
+        return {
+            "id": self.id,
+            "notification_number": self.notification_number,
             "operation_seq": self.operation_seq,
-            "operation_name": self.operation_name,
-            "work_center": self.work_center,
-            "status": self.status,
-            "created_at": self.created_at.isoformat(),
+            "designator": self.designator,
+            "description": self.description,
+            "quantity": self.quantity,
+            "created_at": _iso(self.created_at),
+            "closed_at": _iso(self.closed_at),
+            "open": self.closed_at is None,
         }
 
 
-class Tradeoff(db.Model):
-    """One priority + due date per project — the one row per project this app actually owns.
-    `due_date` lives here, not on Conway's Depot's own Project — it's MARTI's own lens on the
-    project (when the org needs it done), not a core fact about the project the way
-    has_manufacturing is."""
+# --- MARTI's own -------------------------------------------------------------------------------
 
-    __tablename__ = "tradeoff"
 
-    id = db.Column(db.String(36), primary_key=True, default=_uuid)
-    depot_project_id = db.Column(db.String(36), nullable=False, unique=True, index=True)
-    priority = db.Column(db.String(10), nullable=False, default="medium")  # see PRIORITIES
-    due_date = db.Column(db.Date, nullable=True)
-    created_at = db.Column(db.DateTime, default=_now, nullable=False)
+class ProjectRank(db.Model):
+    """Triage: one row per manufacturing project — where leadership has ranked it (1 = first
+    call on shared work centers) and when the customer needs it. Neither lives in S4."""
+
+    __tablename__ = "project_rank"
+
+    depot_project_id = db.Column(db.String(36), primary_key=True)
+    rank = db.Column(db.Integer, nullable=False)
+    need_by = db.Column(db.Date, nullable=True)
     updated_at = db.Column(db.DateTime, default=_now, onupdate=_now, nullable=False)
 
-    def impact(self) -> dict:
-        """Computed fresh every read, never stored — see the module docstring. Low/medium
-        priority plus a due date that's already past or within the next 14 days is flagged;
-        high priority is never flagged regardless of date (it's already being treated as
-        urgent). No due date at all means impact can't be assessed yet."""
-        if self.due_date is None:
-            return {"flagged": False, "reason": "No due date on file yet."}
-        days_out = (self.due_date - date.today()).days
-        if self.priority != "high" and days_out <= 14:
-            when = f"{-days_out} days ago" if days_out < 0 else f"in {days_out} days"
-            return {
-                "flagged": True,
-                "reason": f"{self.priority.capitalize()} priority, but due {when}.",
-                "days_to_due": days_out,
-            }
-        return {"flagged": False, "reason": "On track.", "days_to_due": days_out}
+
+class PriorityChange(db.Model):
+    """One committed re-rank: who, why, and the order before and after (lists of Depot project
+    ids, rank 1 first). The history of Triage decisions, and what every HotFlag traces back
+    to."""
+
+    __tablename__ = "priority_change"
+
+    id = db.Column(db.String(36), primary_key=True, default=_uuid)
+    changed_by = db.Column(db.String(120), nullable=False)
+    reason = db.Column(db.Text, nullable=False)
+    before = db.Column(db.JSON, nullable=False)
+    after = db.Column(db.JSON, nullable=False)
+    changed_at = db.Column(db.DateTime, default=_now, nullable=False)
+    # Where the ranking came from. The person in changed_by always made the commit.
+    source = db.Column(db.String(20), nullable=False, default="person")
+    proposal_id = db.Column(db.String(36), nullable=True)
+    # The Depot persona who committed it (the "viewing as" menu), when known.
+    person_id = db.Column(db.String(36), nullable=True)
+
+    def to_dict(self) -> dict:
+        return {
+            "id": self.id,
+            "changed_by": self.changed_by,
+            "reason": self.reason,
+            "source": self.source,
+            "proposal_id": self.proposal_id,
+            "person_id": self.person_id,
+            "before": self.before,
+            "after": self.after,
+            "changed_at": _iso(self.changed_at),
+        }
+
+
+class HotFlag(db.Model):
+    """An expedite request on one blocking item — raised by MARTI itself when a PriorityChange
+    moves a project up, never hand-raised. The buyer or shop acknowledges it with a typed name
+    (same pattern as Dude, Where's My Part?'s hot flags); it's resolved when the blocker clears
+    or someone marks it done."""
+
+    __tablename__ = "hot_flag"
+
+    id = db.Column(db.String(36), primary_key=True, default=_uuid)
+    depot_project_id = db.Column(db.String(36), nullable=False, index=True)
+    priority_change_id = db.Column(db.String(36), db.ForeignKey("priority_change.id"), nullable=False)
+    # "material" (a component's supply) or "operation" (a queued / held step). `target_key` is
+    # stable across reads: "<material_number>" or "<order_number>/<seq>".
+    target_kind = db.Column(db.String(20), nullable=False)
+    target_key = db.Column(db.String(80), nullable=False)
+    owner = db.Column(db.String(40), nullable=False)  # "Buyer" or the work center code
+    title = db.Column(db.String(200), nullable=False)
+    detail = db.Column(db.Text, nullable=False)
+    status = db.Column(db.String(20), nullable=False, default="open")
+    raised_at = db.Column(db.DateTime, default=_now, nullable=False)
+    acknowledged_by = db.Column(db.String(120), nullable=True)
+    acknowledged_at = db.Column(db.DateTime, nullable=True)
+    resolved_at = db.Column(db.DateTime, nullable=True)
+
+    priority_change = db.relationship("PriorityChange", lazy="joined")
 
     def to_dict(self) -> dict:
         return {
             "id": self.id,
             "depot_project_id": self.depot_project_id,
-            "priority": self.priority,
-            "due_date": self.due_date.isoformat() if self.due_date else None,
-            "created_at": self.created_at.isoformat(),
-            "updated_at": self.updated_at.isoformat(),
-            "impact": self.impact(),
+            "target_kind": self.target_kind,
+            "target_key": self.target_key,
+            "owner": self.owner,
+            "title": self.title,
+            "detail": self.detail,
+            "status": self.status,
+            "raised_at": _iso(self.raised_at),
+            "acknowledged_by": self.acknowledged_by,
+            "acknowledged_at": _iso(self.acknowledged_at),
+            "resolved_at": _iso(self.resolved_at),
+            "priority_change": self.priority_change.to_dict() if self.priority_change else None,
+        }
+
+
+class Proposal(db.Model):
+    """A suggested re-rank (`ranking`, rank 1 first) or capacity change (`levers`, the same shape
+    scheduler.forecast takes), waiting on a person. The impact a proposal shows is never stored
+    here. It's recomputed by the forecast every time it's viewed, so a number the AI wrote can't
+    leak into the UI. A re-rank proposal becomes `committed` through the Triage commit; a
+    capacity proposal becomes `accepted`, a recorded decision, since the real capacity change
+    happens in S4."""
+
+    __tablename__ = "proposal"
+
+    id = db.Column(db.String(36), primary_key=True, default=_uuid)
+    kind = db.Column(db.String(20), nullable=False)  # see PROPOSAL_KINDS
+    source = db.Column(db.String(20), nullable=False)  # see PROPOSAL_SOURCES
+    title = db.Column(db.String(200), nullable=False)
+    rationale = db.Column(db.Text, nullable=True)
+    ranking = db.Column(db.JSON, nullable=True)
+    levers = db.Column(db.JSON, nullable=True)
+    status = db.Column(db.String(20), nullable=False, default="open")
+    created_by = db.Column(db.String(120), nullable=True)
+    created_at = db.Column(db.DateTime, default=_now, nullable=False)
+    decided_by = db.Column(db.String(120), nullable=True)
+    decided_at = db.Column(db.DateTime, nullable=True)
+
+    def to_dict(self) -> dict:
+        return {
+            "id": self.id,
+            "kind": self.kind,
+            "source": self.source,
+            "title": self.title,
+            "rationale": self.rationale,
+            "ranking": self.ranking,
+            "levers": self.levers,
+            "status": self.status,
+            "created_by": self.created_by,
+            "created_at": _iso(self.created_at),
+            "decided_by": self.decided_by,
+            "decided_at": _iso(self.decided_at),
         }

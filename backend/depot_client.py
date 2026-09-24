@@ -37,3 +37,30 @@ def fetch_project(project_id: str) -> dict | None:
         return r.json()
     except httpx.HTTPError:
         return None
+
+
+def fetch_people() -> list[dict] | None:
+    """Every Depot persona — the "viewing as" list MARTI's user menu shows, same list every
+    sibling app's menu shows. Never copied into MARTI's own database."""
+    try:
+        r = httpx.get(f"{DEPOT_API_URL}/api/people", timeout=3.0)
+        if r.status_code != 200:
+            return None
+        return r.json()
+    except httpx.HTTPError:
+        return None
+
+
+def post_project_note(project_id: str, person_id: str | None, body: str) -> bool:
+    """Writes one entry to a project's shared Journal (Depot's POST /api/projects/<id>/notes),
+    authored by `person_id`. Best-effort: a Triage commit must never fail because the Journal was
+    unreachable, so this returns True/False and callers report whether it landed."""
+    try:
+        r = httpx.post(
+            f"{DEPOT_API_URL}/api/projects/{project_id}/notes",
+            json={"person_id": person_id, "body": body},
+            timeout=3.0,
+        )
+        return r.status_code == 201
+    except httpx.HTTPError:
+        return False
