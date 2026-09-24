@@ -1,4 +1,3 @@
-import { DepotBackBar } from '@conways/drawer'
 import { Navigate, Route, Routes, useParams } from 'react-router-dom'
 import Layout from './components/Layout'
 import { PersonaProvider } from './lib/persona'
@@ -21,8 +20,7 @@ export default function App() {
   return (
     <PersonaProvider>
       <ScopeProvider>
-        <DepotBackBar />
-        <Routes>
+          <Routes>
           <Route element={<Layout />}>
             <Route path="/" element={<Navigate to="/material" replace />} />
             <Route path="/material" element={<MaterialPage />} />

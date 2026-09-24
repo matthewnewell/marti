@@ -43,7 +43,7 @@ def demo_client(app, monkeypatch):
 
     projects = [
         {"id": RADAR_ID, "name": "Radar Housing Production", "has_manufacturing": True},
-        {"id": BRACKET_ID, "name": "Bracket Assembly Program", "has_manufacturing": None},
+        {"id": BRACKET_ID, "name": "Bracket Assembly Project", "has_manufacturing": None},
         {"id": AVIONICS_ID, "name": "Avionics Bay Closeout", "has_manufacturing": True},
         {"id": NACELLE_ID, "name": "Nacelle Fairing Retrofit", "has_manufacturing": None},
         {"id": "no-mfg", "name": "Pure services project", "has_manufacturing": False},
