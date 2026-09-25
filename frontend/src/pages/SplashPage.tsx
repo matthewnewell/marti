@@ -1,12 +1,14 @@
 import { Link } from 'react-router-dom'
 import './SplashPage.css'
 
+// Each stage opens the page that covers it: M and A share Material & Acquisition, T and I share
+// Triage & Impact.
 const STAGES = [
-  { letter: 'M', label: 'Material', note: 'S4 master: exists or not' },
-  { letter: 'A', label: 'Acquisition', note: 'PR → PO → receipt' },
-  { letter: 'R', label: 'Routing', note: 'Where it is, how long' },
-  { letter: 'T', label: 'Triage', note: 'Leadership’s stack rank' },
-  { letter: 'I', label: 'Impact', note: 'Who misses need-by' },
+  { letter: 'M', label: 'Material', note: 'S4 master: exists or not', to: '/material' },
+  { letter: 'A', label: 'Acquisition', note: 'PR → PO → receipt', to: '/material' },
+  { letter: 'R', label: 'Routing', note: 'Where it is, how long', to: '/routing' },
+  { letter: 'T', label: 'Triage', note: 'Leadership’s stack rank', to: '/triage' },
+  { letter: 'I', label: 'Impact', note: 'Who misses need-by', to: '/triage' },
 ]
 
 const FEATURES = [
@@ -30,27 +32,27 @@ export default function SplashPage() {
       <div className="splash-page__scroll">
         <div className="splash-page__content">
           <header className="splash-hero">
-            <h1 className="splash-hero__title">Material Acquisition, Routing, Triage and Impact</h1>
+            <h1 className="splash-hero__title">
+              <span className="splash-hero__line">Material Acquisition, Routing,</span>{' '}
+              <span className="splash-hero__line">Triage and Impact</span>
+            </h1>
             <p className="splash-hero__sub">
               See what each build is waiting on, where the shop is backing up, and whose need-by date
               slips when leadership reorders the work.
             </p>
-            <div className="splash-hero__actions">
-              <Link className="splash-btn splash-btn--primary" to="/material">
-                Get started
-              </Link>
-            </div>
           </header>
 
           <figure className="splash-figure">
             <ol className="splash-flow">
               {STAGES.map((s, i) => (
                 <li key={s.letter} className="splash-flow__step">
-                  <div className={`splash-flow__badge${s.letter === 'I' ? ' splash-flow__badge--impact' : ''}`}>
-                    {s.letter}
-                  </div>
-                  <div className="splash-flow__label">{s.label}</div>
-                  <div className="splash-flow__note">{s.note}</div>
+                  <Link className="splash-flow__link" to={s.to}>
+                    <div className={`splash-flow__badge${s.letter === 'I' ? ' splash-flow__badge--impact' : ''}`}>
+                      {s.letter}
+                    </div>
+                    <div className="splash-flow__label">{s.label}</div>
+                    <div className="splash-flow__note">{s.note}</div>
+                  </Link>
                   {i < STAGES.length - 1 && <span className="splash-flow__arrow" aria-hidden="true">▶</span>}
                 </li>
               ))}
