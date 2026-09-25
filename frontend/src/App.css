@@ -20,6 +20,26 @@
   max-width: 760px;
 }
 
+/* Title and description on the left, a page control (the project picker) on the right, level
+   with the title; the control drops underneath when there isn't room. */
+.page__head {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 12px 24px;
+  margin-bottom: 22px;
+}
+
+.page__head > div {
+  flex: 1 1 420px;
+  min-width: 0;
+}
+
+.page__head .page__sub {
+  margin-bottom: 0;
+}
+
 .page__empty {
   color: var(--color-text-faint);
   font-style: italic;

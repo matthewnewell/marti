@@ -1,4 +1,5 @@
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useLayoutEffect, useRef, useState, type CSSProperties } from 'react'
+import { createPortal } from 'react-dom'
 import { Link } from 'react-router-dom'
 import type { Issue } from '../api/types'
 import { useScope } from '../lib/scope'
@@ -39,15 +40,56 @@ export default function IssueBadges({ projectId, issues }: { projectId: string; 
   )
 }
 
+const POP_WIDTH = 380
+const POP_MAX_HEIGHT = 360
+const GAP = 6
+const MARGIN = 8
+
+/** Where the popup goes, in viewport coordinates, next to its chip: below it, or above when
+ * there isn't room below and there is more above; kept inside the viewport horizontally. */
+function placeNear(chip: DOMRect): CSSProperties {
+  const left = Math.max(MARGIN, Math.min(chip.left, window.innerWidth - POP_WIDTH - MARGIN))
+  const below = window.innerHeight - chip.bottom - GAP - MARGIN
+  const above = chip.top - GAP - MARGIN
+  if (below < POP_MAX_HEIGHT && above > below) {
+    return { left, bottom: window.innerHeight - chip.top + GAP, maxHeight: Math.min(POP_MAX_HEIGHT, above) }
+  }
+  return { left, top: chip.bottom + GAP, maxHeight: Math.min(POP_MAX_HEIGHT, Math.max(below, 160)) }
+}
+
 function IssueBadge({ kind, projectId, issues }: { kind: Issue['kind']; projectId: string; issues: Issue[] }) {
   const [open, setOpen] = useState(false)
   const ref = useRef<HTMLSpanElement>(null)
+  const popRef = useRef<HTMLDivElement>(null)
+  const [pos, setPos] = useState<CSSProperties | null>(null)
   const { setProjectId } = useScope()
+
+  // The popup renders at the page's top level (a portal), not inside the table: tables here
+  // scroll sideways (overflow-x: auto), which also clips anything that hangs below them. So it's
+  // positioned against the chip, and follows it when the page scrolls or resizes.
+  useLayoutEffect(() => {
+    if (!open) return
+    const place = () => {
+      if (ref.current) setPos(placeNear(ref.current.getBoundingClientRect()))
+    }
+    place()
+    const onScroll = (e: Event) => {
+      if (!popRef.current?.contains(e.target as Node)) place()
+    }
+    window.addEventListener('scroll', onScroll, true)
+    window.addEventListener('resize', place)
+    return () => {
+      window.removeEventListener('scroll', onScroll, true)
+      window.removeEventListener('resize', place)
+    }
+  }, [open])
 
   useEffect(() => {
     if (!open) return
     const onDown = (e: MouseEvent) => {
-      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false)
+      const target = e.target as Node
+      if (ref.current?.contains(target) || popRef.current?.contains(target)) return
+      setOpen(false)
     }
     const onKey = (e: KeyboardEvent) => e.key === 'Escape' && setOpen(false)
     document.addEventListener('mousedown', onDown)
@@ -70,8 +112,8 @@ function IssueBadge({ kind, projectId, issues }: { kind: Issue['kind']; projectI
       >
         {KIND_LABEL[kind](issues.length)}
       </button>
-      {open && (
-        <div className="ib__pop" role="dialog" onClick={(e) => e.stopPropagation()}>
+      {open && pos && createPortal(
+        <div className="ib__pop" role="dialog" ref={popRef} style={pos} onClick={(e) => e.stopPropagation()}>
           <div className="ib__head">{KIND_HEADING[kind]}</div>
           {issues.map((i, n) => (
             <div key={n} className="ib__item">
@@ -92,7 +134,8 @@ function IssueBadge({ kind, projectId, issues }: { kind: Issue['kind']; projectI
               </Link>
             </div>
           ))}
-        </div>
+        </div>,
+        document.body,
       )}
     </span>
   )

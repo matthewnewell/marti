@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { useSearchParams } from 'react-router-dom'
 import { useAcquisition, useProjects } from '../api/hooks'
 import AcquisitionTable from '../components/AcquisitionTable'
+import ProjectPicker from '../components/ProjectPicker'
 import ProjectStrip from '../components/ProjectStrip'
 import { useScope } from '../lib/scope'
 
@@ -24,11 +25,16 @@ export default function MaterialPage() {
 
   return (
     <div className="page__content">
-      <h1>Material &amp; Acquisition</h1>
-      <p className="page__sub">
-        Every component the builds need: does S4 have a material master, and how far along is its PR → PO → supplier
-        confirmation → receipt → stock, dated against when the step that uses it is scheduled to start.
-      </p>
+      <div className="page__head">
+        <div>
+          <h1>Material &amp; Acquisition</h1>
+          <p className="page__sub">
+            Every component the builds need: does S4 have a material master, and how far along is its PR → PO → supplier
+            confirmation → receipt → stock, dated against when the step that uses it is scheduled to start.
+          </p>
+        </div>
+        <ProjectPicker />
+      </div>
       {row && <ProjectStrip row={row} />}
 
       <div className="toolbar">

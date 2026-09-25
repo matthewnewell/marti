@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { useSearchParams } from 'react-router-dom'
 import { useRouting } from '../api/hooks'
+import ProjectPicker from '../components/ProjectPicker'
 import ProjectStrip from '../components/ProjectStrip'
 import RoutingTree from '../components/RoutingTree'
 import { useScope } from '../lib/scope'
@@ -16,12 +17,18 @@ export default function RoutingPage() {
 
   return (
     <div className="page__content">
-      <h1>Routing</h1>
-      <p className="page__sub">
-        Where every build is: each assembly and the sub-assemblies under it, the step it's at, how long it's sat there,
-        and what's held, short on material or carrying an open quality notification. <strong>Critical</strong> marks the
-        chain of orders setting the finish date. Click an order to see its operations.
-      </p>
+      <div className="page__head">
+        <div>
+          <h1>Routing</h1>
+          <p className="page__sub">
+            Where every build is: each assembly and the sub-assemblies under it, the step it's at, how long it's sat
+            there, and what's held, short on material or carrying an open quality notification.{' '}
+            <strong>Critical</strong> marks the chain of orders setting the finish date. Click an order to see its
+            operations.
+          </p>
+        </div>
+        <ProjectPicker />
+      </div>
 
       <div className="toolbar">
         <span className="toolbar__count">

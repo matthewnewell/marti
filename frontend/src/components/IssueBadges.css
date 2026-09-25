@@ -32,13 +32,13 @@
   color: #7e22ce;
 }
 
+/* Rendered at the page's top level and placed against its chip (IssueBadges.tsx sets top/bottom,
+   left and max-height), so a table that scrolls or clips can't cut it off. */
 .ib__pop {
-  position: absolute;
-  z-index: 30;
-  top: calc(100% + 6px);
-  left: 0;
+  position: fixed;
+  z-index: 1000;
   width: 380px;
-  max-height: 360px;
+  max-width: calc(100vw - 16px);
   overflow-y: auto;
   background: var(--color-surface);
   border: 1px solid var(--color-border-strong);
